@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>basketball one‑tap</title>
+    <title>basket syka</title>
     <style>
         * {
             margin: 0;
@@ -100,6 +100,7 @@
     let state = STATE_IDLE;
     let ball = { x: startX, y: startY, vx: 0, vy: 0 };
     let force = 0;
+    let shotForce = 0;
     let score = 0;
     let scoredThisShot = false;
 
@@ -109,6 +110,7 @@
         ball.vx = 0;
         ball.vy = 0;
         force = 0;
+        shotForce = 0;
         powerFill.style.width = '0%';
         state = STATE_IDLE;
         scoredThisShot = false;
@@ -116,9 +118,9 @@
 
     function shoot() {
         if (state !== STATE_CHARGING) return;
-        let f = force < 0.1 ? 0.1 : force;
-        ball.vx = f * baseSpeed * cosA;
-        ball.vy = f * baseSpeed * sinA;
+        shotForce = force < 0.1 ? 0.1 : force;
+        ball.vx = shotForce * baseSpeed * cosA;
+        ball.vy = - shotForce * baseSpeed * sinA; // полёт вверх
         state = STATE_SHOOTING;
         scoredThisShot = false;
         force = 0;
@@ -144,7 +146,7 @@
                     const vyPrev = ball.vy - gravity;
                     const exactY = prevY + vyPrev * t + 0.5 * gravity * t * t;
                     if (Math.abs(exactY - hoopY) <= Y_TOLERANCE) {
-                        if (force >= MIN_FORCE && force <= MAX_FORCE) {
+                        if (shotForce >= MIN_FORCE && shotForce <= MAX_FORCE) {
                             score++;
                             scoreSpan.textContent = score;
                         }
