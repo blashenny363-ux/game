@@ -2,294 +2,659 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>баскет сукаа</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Танчики: Гигантская битва</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
         body {
-            background: #0b1a24;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
-        }
-        .game-wrapper {
-            background: #1e2f3a;
-            padding: 20px 25px 25px;
-            border-radius: 60px 60px 40px 40px;
-            border: 4px solid #ffb347;
-            box-shadow: 0 20px 0 #0f1c24, 0 25px 30px black;
-        }
-        canvas {
-            display: block;
-            margin: 0 auto;
-            border-radius: 30px;
-            background: radial-gradient(circle at 20% 30%, #2e4b5c, #14212b);
-            box-shadow: inset 0 -6px 0 #1f3f4e, inset 0 6px 8px #6d9eb5, 0 12px 18px black;
-            border: 3px solid #ff9f4b;
-            cursor: none;
-        }
-        .panel {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 15px;
-            padding: 0 8px;
-        }
-        .score-block {
-            background: #2e1b0e;
-            border-radius: 50px;
-            padding: 8px 30px;
-            border: 3px solid #f9b81b;
-            box-shadow: inset 0 -4px 0 #4a2e18, 0 7px 0 #3b200c;
-        }
-        .score-block span {
-            font-size: 42px;
-            font-weight: bold;
-            color: #fee7a0;
-            text-shadow: 3px 3px 0 #b45f1b;
-        }
-        .power-meter {
-            width: 240px;
-            height: 28px;
-            background: #23190f;
-            border-radius: 40px;
-            border: 3px solid #d48b3c;
+            margin: 0;
             overflow: hidden;
-            box-shadow: inset 0 4px 6px #040200;
+            font-family: 'Arial', sans-serif;
         }
-        .power-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #fcd34d, #ef4444, #fcd34d);
-            background-size: 200% 100%;
-            box-shadow: 0 0 15px #ffaa33;
-            transition: width 0.05s linear;
-        }
-        .hint {
-            color: #ffd966;
-            font-size: 22px;
+        #hud {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #ffaa00;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 28px;
             font-weight: bold;
-            text-shadow: 3px 3px 0 #7f3f00;
-            background: #3b280f;
-            padding: 6px 22px;
-            border-radius: 40px;
-            border: 3px solid #ffb347;
-            letter-spacing: 1px;
+            border: 2px solid #ff8800;
+            box-shadow: 0 0 20px rgba(255,136,0,0.5);
+            backdrop-filter: blur(5px);
+            z-index: 20;
+            pointer-events: none;
+        }
+        #hud span {
+            color: white;
+            margin-left: 10px;
+        }
+        #minimap {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            border: 3px solid #aaa;
+            background: #1a2a1a;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            overflow: hidden;
+            z-index: 30;
+            pointer-events: none;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,0,0,0.8);
+            box-shadow: 0 0 15px red;
+            z-index: 40;
+            pointer-events: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: red;
+        }
+        #crosshair::before {
+            width: 20px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #crosshair::after {
+            width: 2px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #hint {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ccc;
+            font-size: 14px;
+            background: rgba(0,0,0,0.4);
+            padding: 6px 12px;
+            border-radius: 20px;
+            z-index: 50;
         }
     </style>
 </head>
 <body>
-<div class="game-wrapper">
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    <div class="panel">
-        <div class="score-block"><span id="scoreDisplay">0</span></div>
-        <div class="power-meter">
-            <div class="power-fill" id="powerFill"></div>
-        </div>
-        <div class="hint">⚡␣</div>
-    </div>
-</div>
+    <div id="hud">💥 Счёт: <span id="score">0</span></div>
+    <div id="minimap"><canvas id="minimap-canvas" width="240" height="240"></canvas></div>
+    <div id="crosshair"></div>
+    <div id="hint">WASD — движение | Пробел — огонь | 🎧 3 звуковых файла</div>
 
-<script>
-(function() {
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreSpan = document.getElementById('scoreDisplay');
-    const powerFill = document.getElementById('powerFill');
-
-    const startX = 120, startY = 320;
-    const hoopX = 650, hoopY = 180;
-    const ballRadius = 16;
-    const gravity = 0.26;
-    const baseSpeed = 18;
-    const angle = Math.PI / 4;
-    const cosA = Math.cos(angle);
-    const sinA = Math.sin(angle);
-
-    const MIN_FORCE = 0.50;
-    const MAX_FORCE = 0.70;
-
-    const STATE_IDLE = 'idle';
-    const STATE_CHARGING = 'charging';
-    const STATE_SHOOTING = 'shooting';
-
-    let state = STATE_IDLE;
-    let ball = { x: startX, y: startY, vx: 0, vy: 0 };
-    let force = 0;
-    let shotForce = 0;
-    let score = 0;
-    let scoredThisShot = false;
-
-    function resetBall() {
-        ball.x = startX;
-        ball.y = startY;
-        ball.vx = 0;
-        ball.vy = 0;
-        force = 0;
-        shotForce = 0;
-        powerFill.style.width = '0%';
-        state = STATE_IDLE;
-        scoredThisShot = false;
-    }
-
-    function shoot() {
-        if (state !== STATE_CHARGING) return;
-        shotForce = force < 0.15 ? 0.15 : force;
-        ball.vx = shotForce * baseSpeed * cosA;
-        ball.vy = - shotForce * baseSpeed * sinA;
-        state = STATE_SHOOTING;
-        scoredThisShot = false;
-        force = 0;
-        powerFill.style.width = '0%';
-    }
-
-    function update() {
-        if (state === STATE_CHARGING) {
-            force = Math.min(1, force + 0.028);
-            powerFill.style.width = (force * 100) + '%';
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.126.0/build/three.module.js"
+            }
         }
+    </script>
 
-        if (state === STATE_SHOOTING) {
-            ball.x += ball.vx;
-            ball.y += ball.vy;
-            ball.vy += gravity;
+    <script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'https://unpkg.com/three@0.126.0/examples/jsm/controls/OrbitControls.js';
 
-            if (!scoredThisShot) {
-                const dx = Math.abs(ball.x - hoopX);
-                const dy = Math.abs(ball.y - hoopY);
-                if (dx < 25 && dy < 30 && ball.vy > 0) {
-                    if (shotForce >= MIN_FORCE && shotForce <= MAX_FORCE) {
-                        score++;
-                        scoreSpan.textContent = score;
+// --- Настройка сцены, камеры, рендерера ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 150, 400);
+
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 12, 25);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.bias = 0.0001;
+document.body.appendChild(renderer.domElement);
+
+// --- Освещение ---
+const ambient = new THREE.AmbientLight(0x404060);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffeedd, 1.5);
+sun.position.set(50, 100, 50);
+sun.castShadow = true;
+sun.receiveShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.left = -100;
+sun.shadow.camera.right = 100;
+sun.shadow.camera.top = 100;
+sun.shadow.camera.bottom = -100;
+sun.shadow.camera.near = 10;
+sun.shadow.camera.far = 200;
+scene.add(sun);
+
+const fillLight = new THREE.PointLight(0x4466ff, 0.6);
+fillLight.position.set(-30, 20, -30);
+scene.add(fillLight);
+
+// --- Горы (большие меши на заднем плане) ---
+function createMountain(x, z, scale) {
+    const group = new THREE.Group();
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x6a5a4a, roughness: 0.8, emissive: 0x000000 });
+    for (let i = 0; i < 5; i++) {
+        const h = 20 + Math.random() * 15;
+        const geo = new THREE.ConeGeometry(8 * scale * (1 - i*0.15), h, 8);
+        const mesh = new THREE.Mesh(geo, rockMat);
+        mesh.position.y = h/2 - 5;
+        mesh.position.x = (Math.random()-0.5)*6;
+        mesh.position.z = (Math.random()-0.5)*6;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+    }
+    group.position.set(x, -2, z);
+    scene.add(group);
+}
+createMountain(-150, -150, 2.5);
+createMountain(180, 170, 3.0);
+createMountain(200, -200, 2.2);
+createMountain(-200, 200, 2.8);
+createMountain(-180, 180, 2.0);
+createMountain(150, -180, 2.1);
+
+// --- Рельеф (холмистая земля с травой) ---
+const groundWidth = 400;
+const groundSegments = 128;
+const groundGeo = new THREE.PlaneGeometry(groundWidth, groundWidth, groundSegments, groundSegments);
+groundGeo.rotateX(-Math.PI / 2);
+const positionAttribute = groundGeo.attributes.position;
+for (let i = 0; i < positionAttribute.count; i++) {
+    const x = positionAttribute.getX(i);
+    const z = positionAttribute.getZ(i);
+    let y = 0;
+    y += Math.sin(x * 0.05) * Math.cos(z * 0.05) * 3;
+    y += Math.sin(x * 0.1) * 1.5;
+    y += Math.cos(z * 0.08) * 2;
+    positionAttribute.setY(i, y);
+}
+groundGeo.computeVertexNormals();
+
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x3c5e3c, roughness: 0.9, emissive: 0x0a1a0a });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.receiveShadow = true;
+ground.castShadow = true;
+ground.position.y = 0;
+scene.add(ground);
+
+// Трава (тысячи спрайтов или частиц? Используем много мелких плоскостей с текстурой травы)
+// Упростим: добавим много крошечных цилиндров (травинок) для реализма, но не перегружаем.
+for (let i = 0; i < 2000; i++) {
+    const x = (Math.random() - 0.5) * 380;
+    const z = (Math.random() - 0.5) * 380;
+    const y = getHeightAt(x, z) + 0.1;
+    if (Math.random() > 0.3) {
+        const bladeGeo = new THREE.ConeGeometry(0.1, 0.5, 4);
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0x3a7a3a });
+        const blade = new THREE.Mesh(bladeGeo, bladeMat);
+        blade.position.set(x, y, z);
+        blade.castShadow = true;
+        blade.receiveShadow = true;
+        scene.add(blade);
+    }
+}
+
+function getHeightAt(x, z) {
+    let y = 0;
+    y += Math.sin(x * 0.05) * Math.cos(z * 0.05) * 3;
+    y += Math.sin(x * 0.1) * 1.5;
+    y += Math.cos(z * 0.08) * 2;
+    return y;
+}
+
+// --- Деревья (много, с коллизиями) ---
+const trees = [];
+function createTree(x, z) {
+    const group = new THREE.Group();
+    const h = getHeightAt(x, z);
+    
+    const trunkGeo = new THREE.CylinderGeometry(0.8, 1.2, 5);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = h + 2.5;
+    trunk.castShadow = true;
+    trunk.receiveShadow = true;
+    group.add(trunk);
+    
+    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2a7a2a });
+    for (let i = 0; i < 5; i++) {
+        const foliageGeo = new THREE.ConeGeometry(1.5 - i*0.2, 2, 6);
+        const foliage = new THREE.Mesh(foliageGeo, foliageMat);
+        foliage.position.y = h + 4.5 + i * 1.2;
+        foliage.castShadow = true;
+        foliage.receiveShadow = true;
+        group.add(foliage);
+    }
+    
+    group.position.set(x, 0, z);
+    scene.add(group);
+    trees.push(group);
+}
+for (let i = 0; i < 300; i++) {
+    const x = (Math.random() - 0.5) * 350;
+    const z = (Math.random() - 0.5) * 350;
+    // избегаем центра где спавнимся
+    if (Math.sqrt(x*x + z*z) < 15) continue;
+    createTree(x, z);
+}
+
+// --- Звуки ---
+const audioListener = new THREE.AudioListener();
+camera.add(audioListener);
+
+const soundKill = new THREE.Audio(audioListener);
+const soundGoing = new THREE.Audio(audioListener);
+const soundShoot = new THREE.Audio(audioListener);
+
+let audioLoaded = false;
+function loadSounds() {
+    try {
+        const loader = new THREE.AudioLoader();
+        loader.load('audio_kill.mp3', (buffer) => { soundKill.setBuffer(buffer); soundKill.setVolume(0.7); });
+        loader.load('audio_going.mp3', (buffer) => { soundGoing.setBuffer(buffer); soundGoing.setVolume(0.3); soundGoing.setLoop(true); });
+        loader.load('audio_shoot.mp3', (buffer) => { soundShoot.setBuffer(buffer); soundShoot.setVolume(0.5); });
+        audioLoaded = true;
+    } catch (e) { console.warn('Аудио не загружено'); }
+}
+loadSounds();
+
+// --- Частицы для искр ---
+const sparkGeometry = new THREE.BufferGeometry();
+const sparkMaterial = new THREE.PointsMaterial({ color: 0xffaa00, size: 0.3 });
+const sparks = new THREE.Points(sparkGeometry, sparkMaterial);
+scene.add(sparks);
+let sparkPositions = [];
+
+// --- Функция создания искр ---
+function emitSparks(position, count=10) {
+    for (let i=0; i<count; i++) {
+        sparkPositions.push(position.x + (Math.random()-0.5)*2, position.y+1, position.z + (Math.random()-0.5)*2);
+    }
+    if (sparkPositions.length > 1000) sparkPositions.splice(0, 300);
+    sparkGeometry.setAttribute('position', new THREE.Float32BufferAttribute(sparkPositions, 3));
+}
+
+// --- Класс танка (общий) ---
+class Tank {
+    constructor(isEnemy = false, pos = null) {
+        this.group = new THREE.Group();
+        this.isEnemy = isEnemy;
+        this.health = 100;
+        this.lastShot = 0;
+        this.aiState = 'patrol'; // patrol, aim, shoot, retreat
+        this.aiTimer = 0;
+        this.targetDirection = new THREE.Vector3();
+        this.speed = isEnemy ? 0.1 : 0.15;
+        this.turretRotation = 0;
+        
+        // Корпус (сглаженный)
+        const bodyGeo = new THREE.CylinderGeometry(1.6, 1.6, 1.2, 8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: isEnemy ? 0x8b3a3a : 0x3a6ea5, roughness: 0.3, metalness: 0.6 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.6;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        this.group.add(body);
+        
+        // Гусеничные ленты (торы)
+        const trackMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+        for (let side = -1; side <= 1; side+=2) {
+            const trackGeo = new THREE.TorusGeometry(1.1, 0.25, 6, 16, Math.PI);
+            const track = new THREE.Mesh(trackGeo, trackMat);
+            track.rotation.y = Math.PI/2;
+            track.rotation.x = Math.PI/2;
+            track.position.set(side*1.3, 0.3, 0);
+            track.castShadow = true;
+            track.receiveShadow = true;
+            this.group.add(track);
+        }
+        
+        // Башня (сглаженный цилиндр)
+        const turretGeo = new THREE.CylinderGeometry(1.1, 1.1, 0.8, 12);
+        const turretMat = new THREE.MeshStandardMaterial({ color: isEnemy ? 0x9b4a4a : 0x4a7eb5, roughness: 0.2, metalness: 0.7 });
+        this.turret = new THREE.Mesh(turretGeo, turretMat);
+        this.turret.position.y = 1.2;
+        this.turret.castShadow = true;
+        this.turret.receiveShadow = true;
+        this.group.add(this.turret);
+        
+        // Пушка (длинный цилиндр + сфера на конце)
+        const barrelGeo = new THREE.CylinderGeometry(0.3, 0.3, 2.5, 8);
+        const barrelMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9 });
+        this.barrel = new THREE.Mesh(barrelGeo, barrelMat);
+        this.barrel.rotation.x = Math.PI / 2;
+        this.barrel.position.set(0, 1.2, 1.3);
+        this.barrel.castShadow = true;
+        this.barrel.receiveShadow = true;
+        this.group.add(this.barrel);
+        
+        const muzzleGeo = new THREE.SphereGeometry(0.4, 6);
+        const muzzleMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
+        const muzzle = new THREE.Mesh(muzzleGeo, muzzleMat);
+        muzzle.position.set(0, 1.2, 2.7);
+        muzzle.castShadow = true;
+        this.group.add(muzzle);
+        
+        if (pos) {
+            this.group.position.copy(pos);
+            this.group.position.y = getHeightAt(pos.x, pos.z) + 0.6;
+        } else {
+            // случайная позиция
+            const angle = Math.random()*Math.PI*2;
+            const dist = 30 + Math.random()*80;
+            this.group.position.x = Math.cos(angle)*dist;
+            this.group.position.z = Math.sin(angle)*dist;
+            this.group.position.y = getHeightAt(this.group.position.x, this.group.position.z) + 0.6;
+        }
+        this.group.rotation.y = Math.random()*Math.PI*2;
+        
+        scene.add(this.group);
+    }
+    
+    update(deltaTime, playerTank, enemies, bullets) {
+        // движение, ИИ и пр.
+        const pos = this.group.position;
+        const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.group.quaternion);
+        
+        if (this.isEnemy) {
+            // ИИ врага
+            const toPlayer = new THREE.Vector3().subVectors(playerTank.group.position, pos);
+            const distToPlayer = toPlayer.length();
+            
+            if (distToPlayer < 30) {
+                // видит игрока
+                this.aiState = 'aim';
+                // поворачиваем башню
+                const targetAngle = Math.atan2(toPlayer.x, toPlayer.z);
+                this.turret.rotation.y += (targetAngle - this.turret.rotation.y) * 0.1;
+                
+                if (distToPlayer < 25 && Math.random() < 0.02) {
+                    // стрельба
+                    const now = performance.now() / 1000;
+                    if (now - this.lastShot > 1.5) {
+                        this.shoot(bullets);
+                        this.lastShot = now;
                     }
-                    scoredThisShot = true;
                 }
+                if (distToPlayer < 15) {
+                    // слишком близко, отступить
+                    this.aiState = 'retreat';
+                }
+            } else {
+                this.aiState = 'patrol';
             }
-
-            if (ball.y > canvas.height + ballRadius*2 || ball.x > canvas.width + ballRadius*2 || ball.x < -ballRadius*2) {
-                resetBall();
-            }
-            if (ball.y > canvas.height - 20 && state === STATE_SHOOTING) {
-                resetBall();
+            
+            // патруль: случайное движение
+            if (this.aiState === 'patrol') {
+                this.aiTimer -= deltaTime;
+                if (this.aiTimer <= 0) {
+                    this.aiTimer = 3 + Math.random()*5;
+                    this.targetDirection.set(Math.random()-0.5, 0, Math.random()-0.5).normalize();
+                }
+                // плавный поворот
+                const targetRot = Math.atan2(this.targetDirection.x, this.targetDirection.z);
+                this.group.rotation.y += (targetRot - this.group.rotation.y) * 0.05;
+                this.group.translateZ(this.speed * 0.5);
+            } else if (this.aiState === 'aim') {
+                // стоим, крутим башню
+                // поворот корпуса иногда
+            } else if (this.aiState === 'retreat') {
+                const away = new THREE.Vector3().subVectors(pos, playerTank.group.position).normalize();
+                const targetRot = Math.atan2(away.x, away.z);
+                this.group.rotation.y += (targetRot - this.group.rotation.y) * 0.1;
+                this.group.translateZ(this.speed);
             }
         }
-
-        draw();
-        requestAnimationFrame(update);
+        
+        // Проверка коллизий с деревьями
+        for (let tree of trees) {
+            const d = pos.distanceTo(tree.position);
+            if (d < 3) {
+                // отталкивание
+                const push = new THREE.Vector3().subVectors(pos, tree.position).normalize().multiplyScalar(0.5);
+                pos.add(push);
+                emitSparks(pos, 3);
+            }
+        }
+        
+        // Коллизии с другими танками
+        for (let other of enemies) {
+            if (other === this) continue;
+            const d = pos.distanceTo(other.group.position);
+            if (d < 3) {
+                const push = new THREE.Vector3().subVectors(pos, other.group.position).normalize().multiplyScalar(0.5);
+                pos.add(push);
+                other.group.position.sub(push);
+                emitSparks(pos, 5);
+            }
+        }
+        
+        // Подгонка высоты
+        pos.y = getHeightAt(pos.x, pos.z) + 0.6;
+        
+        // Звук езды (упрощённо, включаем если двигаемся)
+        if (audioLoaded && !soundGoing.isPlaying && (this === playerTank || this.isEnemy)) {
+            soundGoing.play();
+        }
     }
-
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        grad.addColorStop(0, '#1d3b4c');
-        grad.addColorStop(1, '#0c1f2b');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.strokeStyle = '#ffd966';
-        ctx.lineWidth = 5;
-        ctx.setLineDash([20, 30]);
-        ctx.beginPath();
-        ctx.moveTo(100, 70);
-        ctx.lineTo(700, 70);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.fillStyle = '#4a3729';
-        ctx.shadowColor = '#ffb347';
-        ctx.shadowBlur = 12;
-        ctx.fillRect(hoopX - 28, hoopY - 80, 20, 140);
-        ctx.shadowBlur = 0;
-        ctx.shadowColor = 'transparent';
-        ctx.strokeStyle = '#f5e56b';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(hoopX - 28, hoopY - 80, 20, 140);
-
-        ctx.beginPath();
-        ctx.arc(hoopX, hoopY, 20, 0, Math.PI * 2);
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 9;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(hoopX, hoopY, 20, 0, Math.PI * 2);
-        ctx.strokeStyle = '#b45309';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(hoopX-12, hoopY+22);
-        ctx.lineTo(hoopX-8, hoopY+50);
-        ctx.lineTo(hoopX, hoopY+52);
-        ctx.lineTo(hoopX+8, hoopY+50);
-        ctx.lineTo(hoopX+12, hoopY+22);
-        ctx.strokeStyle = '#c9a959';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.shadowColor = '#f59e0b';
-        ctx.shadowBlur = 20;
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ballRadius, 0, 2 * Math.PI);
-        ctx.fillStyle = '#f97316';
-        ctx.fill();
-        ctx.strokeStyle = '#2d1a0a';
-        ctx.lineWidth = 4;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(ball.x - 15, ball.y - 8);
-        ctx.lineTo(ball.x + 15, ball.y + 8);
-        ctx.moveTo(ball.x - 15, ball.y + 8);
-        ctx.lineTo(ball.x + 15, ball.y - 8);
-        ctx.strokeStyle = '#2b1a0e';
-        ctx.lineWidth = 4;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.beginPath();
-        ctx.arc(ball.x - 5, ball.y - 5, 4, 0, 2 * Math.PI);
-        ctx.fillStyle = '#fff8e7';
-        ctx.globalAlpha = 0.5;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-
-        ctx.font = 'bold 20px "Comic Sans MS", cursive';
-        ctx.fillStyle = '#fee08b';
-        ctx.shadowColor = '#b95f17';
-        ctx.shadowBlur = 8;
-        ctx.fillText('✓', 570, 120);
-        ctx.fillText('✓', 590, 100);
-        ctx.shadowBlur = 0;
+    
+    shoot(bullets) {
+        const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.4), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200 }));
+        bullet.castShadow = true;
+        const dir = new THREE.Vector3(0,0,1).applyQuaternion(this.turret.quaternion).normalize();
+        bullet.position.copy(this.barrel.getWorldPosition(new THREE.Vector3()));
+        bullet.userData.velocity = dir.multiplyScalar(1.2);
+        bullet.userData.owner = this;
+        scene.add(bullet);
+        bullets.push(bullet);
+        
+        if (audioLoaded) soundShoot.play();
     }
+}
 
-    window.addEventListener('keydown', e => {
-        if (e.code === 'Space') {
-            e.preventDefault();
-            if (state === STATE_IDLE) {
-                state = STATE_CHARGING;
-                force = 0;
-                powerFill.style.width = '0%';
+// --- Игрок ---
+const playerTank = new Tank(false, new THREE.Vector3(0,0,0));
+
+// --- Враги ---
+const enemyTanks = [];
+for (let i=0; i<8; i++) {
+    enemyTanks.push(new Tank(true));
+}
+
+// --- Снаряды ---
+const bullets = [];
+
+// --- Управление ---
+const keyState = { w:false, a:false, s:false, d:false, space:false };
+window.addEventListener('keydown', (e) => {
+    switch(e.code) {
+        case 'KeyW': keyState.w = true; e.preventDefault(); break;
+        case 'KeyA': keyState.a = true; e.preventDefault(); break;
+        case 'KeyS': keyState.s = true; e.preventDefault(); break;
+        case 'KeyD': keyState.d = true; e.preventDefault(); break;
+        case 'Space': keyState.space = true; e.preventDefault(); break;
+    }
+});
+window.addEventListener('keyup', (e) => {
+    switch(e.code) {
+        case 'KeyW': keyState.w = false; e.preventDefault(); break;
+        case 'KeyA': keyState.a = false; e.preventDefault(); break;
+        case 'KeyS': keyState.s = false; e.preventDefault(); break;
+        case 'KeyD': keyState.d = false; e.preventDefault(); break;
+        case 'Space': keyState.space = false; e.preventDefault(); break;
+    }
+});
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+// --- Миникарта ---
+const minimapCanvas = document.getElementById('minimap-canvas');
+const ctx = minimapCanvas.getContext('2d');
+function updateMinimap() {
+    ctx.clearRect(0,0,240,240);
+    ctx.fillStyle = '#1a3a1a';
+    ctx.fillRect(0,0,240,240);
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(2,2,236,236);
+    
+    const scale = 200 / 400;
+    const cx = 120;
+    const cz = 120;
+    
+    // враги
+    ctx.fillStyle = 'red';
+    for (let e of enemyTanks) {
+        const x = cx + e.group.position.x * scale;
+        const y = cz - e.group.position.z * scale;
+        if (x>0 && x<240 && y>0 && y<240) {
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, 2*Math.PI);
+            ctx.fill();
+        }
+    }
+    // игрок
+    ctx.fillStyle = 'blue';
+    const px = cx + playerTank.group.position.x * scale;
+    const py = cz - playerTank.group.position.z * scale;
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // деревья (точки)
+    ctx.fillStyle = 'green';
+    for (let tree of trees) {
+        const x = cx + tree.position.x * scale;
+        const y = cz - tree.position.z * scale;
+        if (x>0 && x<240 && y>0 && y<240) {
+            ctx.fillRect(x-1, y-1, 2, 2);
+        }
+    }
+}
+
+// --- Счёт ---
+let score = 0;
+const scoreSpan = document.getElementById('score');
+
+// --- Цикл анимации ---
+let lastTime = performance.now() / 1000;
+function animate() {
+    const now = performance.now() / 1000;
+    const delta = Math.min(0.1, now - lastTime);
+    lastTime = now;
+    
+    // Управление игроком
+    if (keyState.w) playerTank.group.translateZ(playerTank.speed);
+    if (keyState.s) playerTank.group.translateZ(-playerTank.speed*0.6);
+    if (keyState.a) playerTank.group.rotation.y += 0.03;
+    if (keyState.d) playerTank.group.rotation.y -= 0.03;
+    if (keyState.space) {
+        const nowTime = performance.now()/1000;
+        if (nowTime - playerTank.lastShot > 0.8) {
+            playerTank.shoot(bullets);
+            playerTank.lastShot = nowTime;
+        }
+    }
+    
+    // Обновление всех танков
+    playerTank.update(delta, playerTank, enemyTanks, bullets);
+    for (let e of enemyTanks) {
+        e.update(delta, playerTank, enemyTanks, bullets);
+    }
+    
+    // Обновление снарядов и проверка попаданий
+    for (let i = bullets.length-1; i>=0; i--) {
+        const b = bullets[i];
+        b.position.add(b.userData.velocity);
+        // проверка попадания в игрока
+        if (b.userData.owner !== playerTank) {
+            const dist = b.position.distanceTo(playerTank.group.position);
+            if (dist < 2) {
+                // игрок подбит
+                if (audioLoaded) soundKill.play();
+                emitSparks(playerTank.group.position, 20);
+                // возрождение
+                playerTank.group.position.set(0,0,0);
+                // враги тоже возрождаются, но не будем усложнять, просто удалим подбитого врага
+                scene.remove(b);
+                bullets.splice(i,1);
+                continue;
             }
         }
-    });
-
-    window.addEventListener('keyup', e => {
-        if (e.code === 'Space') {
-            e.preventDefault();
-            shoot();
+        // проверка попадания во врагов
+        for (let j = enemyTanks.length-1; j>=0; j--) {
+            const enemy = enemyTanks[j];
+            if (b.userData.owner === enemy) continue;
+            const dist = b.position.distanceTo(enemy.group.position);
+            if (dist < 2) {
+                // уничтожен
+                if (audioLoaded) soundKill.play();
+                emitSparks(enemy.group.position, 20);
+                scene.remove(enemy.group);
+                enemyTanks.splice(j,1);
+                // новый враг
+                enemyTanks.push(new Tank(true));
+                score += 10;
+                scoreSpan.innerText = score;
+                // удалить пулю
+                scene.remove(b);
+                bullets.splice(i,1);
+                break;
+            }
         }
-    });
+        // удаление пули далеко
+        if (Math.abs(b.position.x) > 200 || Math.abs(b.position.z) > 200 || b.position.y < -10) {
+            scene.remove(b);
+            bullets.splice(i,1);
+        }
+    }
+    
+    // Камера следования
+    const camOffset = new THREE.Vector3(0, 8, -15).applyQuaternion(playerTank.group.quaternion);
+    camera.position.lerp(playerTank.group.position.clone().add(camOffset), 0.1);
+    camera.lookAt(playerTank.group.position.clone().add(new THREE.Vector3(0,2,0)));
+    
+    // Обновление искр
+    if (sparkPositions.length > 0) {
+        sparkPositions = sparkPositions.filter((_, i) => i % 3 !== 0); // простое затухание
+        sparkGeometry.setAttribute('position', new THREE.Float32BufferAttribute(sparkPositions, 3));
+    }
+    
+    // Миникарта
+    updateMinimap();
+    
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+}
+animate();
 
-    window.addEventListener('contextmenu', e => e.preventDefault());
+// --- Ресайз ---
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-    resetBall();
-    requestAnimationFrame(update);
-})();
-</script>
+window.focus();
+    </script>
 </body>
 </html>
