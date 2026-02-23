@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>basketball one‑tap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #1a3a4e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .game-container {
+            background: #2d4e5e;
+            padding: 20px;
+            border-radius: 40px;
+            box-shadow: 0 15px 25px black;
+        }
+        canvas {
+            display: block;
+            border-radius: 24px;
+            background: radial-gradient(circle at 30% 40%, #b7d9e5, #6b98b0);
+            box-shadow: inset 0 -4px 8px #3c6a80, 0 8px 12px black;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding: 0 10px;
+            color: #f0f9ff;
+            font-weight: bold;
+        }
+        .score {
+            background: #1c3845;
+            border-radius: 40px;
+            padding: 6px 22px;
+            font-size: 30px;
+            box-shadow: inset 0 -3px 0 #0f222e, 0 5px 0 #0a1a23;
+            color: #ffd966;
+        }
+        .power-bar {
+            width: 200px;
+            height: 24px;
+            background: #2f4d5b;
+            border-radius: 40px;
+            overflow: hidden;
+            box-shadow: inset 0 4px 6px #10212b;
+        }
+        .power-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ffb86b, #ff6347);
+            transition: width 0.05s linear;
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <canvas id="canvas" width="800" height="400"></canvas>
+    <div class="stats">
+        <div class="score" id="scoreDisplay">0</div>
+        <div class="power-bar">
+            <div class="power-fill" id="powerFill"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreSpan = document.getElementById('scoreDisplay');
+    const powerFill = document.getElementById('powerFill');
+
+    const startX = 120, startY = 320;
+    const hoopX = 650, hoopY = 180;
+    const ballRadius = 14;
+    const gravity = 0.28;
+    const baseSpeed = 17.5;
+    const angle = Math.PI / 4;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+
+    const MIN_FORCE = 0.52;
+    const MAX_FORCE = 0.68;
+    const Y_TOLERANCE = 24;
+
+    const STATE_IDLE = 'idle';
+    const STATE_CHARGING = 'charging';
+    const STATE_SHOOTING = 'shooting';
+
+    let state = STATE_IDLE;
+    let ball = { x: startX, y: startY, vx: 0, vy: 0 };
+    let force = 0;
+    let score = 0;
+    let scoredThisShot = false;
+
+    function resetBall() {
+        ball.x = startX;
+        ball.y = startY;
+        ball.vx = 0;
+        ball.vy = 0;
+        force = 0;
+        powerFill.style.width = '0%';
+        state = STATE_IDLE;
+        scoredThisShot = false;
+    }
+
+    function shoot() {
+        if (state !== STATE_CHARGING) return;
+        let f = force < 0.1 ? 0.1 : force;
+        ball.vx = f * baseSpeed * cosA;
+        ball.vy = f * baseSpeed * sinA;
+        state = STATE_SHOOTING;
+        scoredThisShot = false;
+        force = 0;
+        powerFill.style.width = '0%';
+    }
+
+    function update() {
+        if (state === STATE_CHARGING) {
+            force = Math.min(1, force + 0.028);
+            powerFill.style.width = (force * 100) + '%';
+        }
+
+        if (state === STATE_SHOOTING) {
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vy += gravity;
+
+            if (!scoredThisShot) {
+                const prevX = ball.x - ball.vx;
+                if (prevX < hoopX && ball.x >= hoopX) {
+                    const t = (hoopX - prevX) / (ball.vx || 0.001);
+                    const prevY = ball.y - ball.vy;
+                    const vyPrev = ball.vy - gravity;
+                    const exactY = prevY + vyPrev * t + 0.5 * gravity * t * t;
+                    if (Math.abs(exactY - hoopY) <= Y_TOLERANCE) {
+                        if (force >= MIN_FORCE && force <= MAX_FORCE) {
+                            score++;
+                            scoreSpan.textContent = score;
+                        }
+                        scoredThisShot = true;
+                    }
+                }
+            }
+
+            if (ball.y > canvas.height + ballRadius*2 || ball.x > canvas.width + ballRadius*2 || ball.x < -ballRadius*2) {
+                resetBall();
+            }
+            if (ball.y > canvas.height - 20 && state === STATE_SHOOTING) {
+                resetBall();
+            }
+        }
+
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#a3c6d9';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#bc9b7a';
+        ctx.shadowColor = '#3f2d1c';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(hoopX - 25, hoopY - 75, 18, 130);
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.arc(hoopX, hoopY, 18, 0, Math.PI * 2);
+        ctx.strokeStyle = '#f90';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(hoopX, hoopY+3, 12, 0.1, Math.PI - 0.1);
+        ctx.strokeStyle = '#f90';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(hoopX-10, hoopY+20);
+        ctx.lineTo(hoopX-6, hoopY+45);
+        ctx.lineTo(hoopX+2, hoopY+45);
+        ctx.lineTo(hoopX+6, hoopY+20);
+        ctx.strokeStyle = '#c9ae74';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.shadowColor = '#1f2f38';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ballRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#d97c2b';
+        ctx.fill();
+        ctx.strokeStyle = '#442a0e';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    window.addEventListener('keydown', e => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (state === STATE_IDLE) {
+                state = STATE_CHARGING;
+                force = 0;
+                powerFill.style.width = '0%';
+            }
+        }
+    });
+
+    window.addEventListener('keyup', e => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            shoot();
+        }
+    });
+
+    window.addEventListener('contextmenu', e => e.preventDefault());
+    resetBall();
+    requestAnimationFrame(update);
+})();
+</script>
+</body>
+</html>
